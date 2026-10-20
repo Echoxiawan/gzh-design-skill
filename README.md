@@ -135,7 +135,15 @@ git clone https://github.com/isjiamu/gzh-design-skill.git ~/.claude/skills/gzh-d
 
 ## 🧩 公众号平台限制（已内置兜底）
 
-生成的 HTML 严格遵守：禁 `<style>/<script>/<div>`、`class/id`、`position:fixed/absolute/sticky`、`float`、`@media/@keyframes`、`display:grid`、CSS 变量、外部字体；样式全部内联；所有文字用 `<span leaf="">` 包裹。这些由校验脚本确定性检查，而非靠模型自觉。
+生成的 HTML 严格遵守[官方《微信公众平台编辑器插件开发规范》](https://developers.weixin.qq.com/doc/service/guide/product/plugin_spec.html)：
+
+- **标签/属性**：禁 `<style>/<script>/<div>`、`class/id`、`position:fixed/absolute/sticky`、`float`、`@media/@keyframes`、`display:grid`、CSS 变量、外部字体、`!important`；样式全部内联。
+- **节点结构**：所有文字用 `<span leaf="">` 包裹；`span[leaf]` 内不出现块级元素（`section/p/div`）。
+- **字体**：不写 `font-family`，一律 `inherit` 走平台默认字体栈（自定义字体在 iOS/安卓渲染不一致）。
+- **CSS 属性**：`height:0` 不包文字、`line-height` 不小于字号、定宽容器不包文字、`text-align` 不用 `start/end`、`img` 的 `opacity` 不为 0。
+- **暗色模式**：文字/卡片背景用纯色，文字压在渐变上会被暗色模式转成纯色。
+
+这些由校验脚本确定性检查，而非靠模型自觉。需要官方实测时，可再跑 [wechatjs/verify-article-structure-spec](https://github.com/wechatjs/verify-article-structure-spec) 的 CLI（真实浏览器量布局），详见 `SKILL.md` 第 5 步。
 
 ## 🔁 可验证循环
 
@@ -146,8 +154,8 @@ python3 scripts/component_lint.py .            # 源头关：扫组件库反模�
 python3 scripts/validate_gzh_html.py out.html  # 产物关：扫最终 HTML 合规
 ```
 
-- **源头关** 查 `white-space:pre`（大空白）、正文四周虚线框、平台禁用项 —— 须 0 ERROR。
-- **产物关** 查禁用标签、`<span leaf>` 包裹、半角标点 —— 须 0 ERROR / 半角 0 WARN。
+- **源头关** 查 `white-space:pre`（大空白）、正文四周虚线框、平台禁用项、自定义 font-family、`!important`、`<pre>` —— 须 0 ERROR。
+- **产物关** 查禁用标签、`<span leaf>` 包裹、官方规范 #1/#2/#3 的 CSS 与结构红线、半角标点 —— 须 0 ERROR / 半角 0 WARN。
 - 逻辑：源头干净 → 产物必然干净。详见 `references/eval-cases.md`。
 
 ## 💡 为什么这么设计

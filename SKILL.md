@@ -81,9 +81,21 @@ description: 微信公众号文章排版引擎，将 Markdown 转换为可直接
 <SKILL_ROOT>/scripts/validate_gzh_html.py <生成的.html 的实际路径>
 ```
 
-它确定性地检查平台禁用项和 `<span leaf>` 包裹。报 ERROR 就回到第 4 步修；**半角标点 WARNING 同样要修复到 0 再交付**（这是实际使用中最高频的返工点）。
+它确定性地检查：平台禁用项、`<span leaf>` 包裹、官方规范 #1 的 CSS 属性红线（height:0 / line-height / 固定宽度 / text-align / opacity / caret-color）、#2 的节点结构（span leaf 内不得有块级元素）、#3 的字体（自定义 font-family）、`!important`、渐变是否压着文字。报 ERROR 就回到第 4 步修；**半角标点 WARNING 同样要修复到 0 再交付**（这是实际使用中最高频的返工点）。
 
-**渐变背景 WARNING 要逐项处理**：文字高亮、引用/数据/引导卡背景默认改为主题内纯色或 rgba 纯色；用户明确要求保留时，交付注明可能触发 `darkmode-no-gradient` 弹窗。纯装饰渐变也会提示，尚未确认其不会触发弹窗，保留时同样说明风险。
+**渐变背景 WARNING 要逐项处理**：脚本会区分两类——`[darkmode-no-gradient:文字背景]` 是官方规范 #4.1.2 明确不建议的（暗色模式渐变会消失），必须改成主题内纯色或 rgba 纯色；`[darkmode-no-gradient:装饰]` 表示渐变下方无文字，官方规范 #4.1.3 允许保留，但按"纯色优先"原则能改则改。用户明确要求保留时，交付注明风险。
+
+**布局类 WARNING 怎么判**：`height:0` 含文字、`line-height` 小于字号且文字成段、定宽容器内含文字，这三类移动端会真出事（官方规范 #1.3/#1.4/#1.5），必须改；≤120px 的定宽小件（编号圆点、标签胶囊）和单行大字不算违规，脚本已豁免。
+
+**可选的官方实测**（静态脚本量不到真实布局时）：官方仓库 [wechatjs/verify-article-structure-spec](https://github.com/wechatjs/verify-article-structure-spec) 用真实浏览器跑 width / height / line-height / pre 的实测，覆盖本脚本的全部规则：
+
+```bash
+git clone --depth 1 https://github.com/wechatjs/verify-article-structure-spec.git /tmp/vas
+cd /tmp/vas/cli && PUPPETEER_SKIP_DOWNLOAD=1 npm install
+npx tsx src/index.ts <生成的.html 的实际路径> --executable-path="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+```
+
+退出码 0 = 无违规。本 skill 的校验脚本是它的静态前置关（生成时就能拦），官方 CLI 是交付前的终验；两者结论冲突时以官方 CLI 为准。
 
 ### 6. 输出
 
@@ -122,10 +134,15 @@ description: 微信公众号文章排版引擎，将 Markdown 转换为可直接
 
 ## 平台红线（核心，完整检查交给校验脚本）
 
-- **禁止**：`<style>`/`<script>`/`<div>`、`class`/`id` 属性、`position:fixed/absolute/sticky`、`float`、`@media`/`@keyframes`、`display:grid`、CSS 变量、外部字体/CSS。
+依据官方[《微信公众平台编辑器插件开发规范》](https://developers.weixin.qq.com/doc/service/guide/product/plugin_spec.html)（下称"官方规范 #章节"）。
+
+- **禁止**：`<style>`/`<script>`/`<div>`、`class`/`id` 属性、`position:fixed/absolute/sticky`、`float`、`@media`/`@keyframes`、`display:grid`、CSS 变量、外部字体/CSS、`!important`（官方规范 #4.5.2）。
 - **必须**：样式全部内联 `style`；所有文字节点用 `<span leaf="">文字</span>` 包裹（否则粘贴后样式丢失）。
 - **可用**：`display:flex`（有限）、`border-radius`、`box-shadow`、`<section>/<p>/<span>/<strong>/<img>/<h3>`。
-- **渐变背景兼容性**：渐变可渲染，但可能触发公众号 `darkmode-no-gradient` 内容结构检测；文字和卡片背景默认用纯色，不额外添加渐变。旧组件/自定义主题遇到此项也按第 5 步处理。
+- **不写 `font-family`**（官方规范 #3）：一律 `inherit` 走平台默认字体栈。自定义字体会让 iOS/安卓渲染不一致；"衬线/手账/杂志"气质靠字重、字间距、行高、留白与细线营造。等宽代码字体是唯一例外。
+- **节点结构**（官方规范 #2）：`<span leaf>` 是**行内**容器，里面只能放文本与行内元素（`span/strong/img`），**严禁塞 `section/p/div`**；`<section nodeleaf>` 只用于官方指定组件容器，不要自行给普通容器加 `nodeleaf`。
+- **CSS 属性红线**（官方规范 #1）：`height:0` 里不要包文字（移动端整段不可见，1.5.1）；`line-height` 不要小于字号（多行叠字，1.3）；元素不要写死 `width:px` 且内含文字（不同屏居中/溢出不一致，1.4，确有需要加 `data-ignore-width`）；`text-align` 只能用 `left/center/right`，不用 `start/end`（1.6）；`img` 的 `opacity` 不为 0（1.1）；`caret-color` 不设透明（1.2）；SVG 动画 `begin` 同时写 `touchstart; click`（1.7）；`<pre>` 只装代码并给 `overflow-x:auto`（1.8）。
+- **渐变背景**：**文字/卡片背景默认纯色**（官方规范 #4.1.2 明确不建议文字背景用渐变，暗色模式会转纯色）；无文字压着的纯装饰渐变允许（#4.1.3），但按"纯色优先"原则能改则改。旧组件/自定义主题遇到此项按第 5 步处理。
 
 ## Gotchas（真实排版踩过的坑）
 

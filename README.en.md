@@ -121,7 +121,7 @@ Scan to join the **official WeChat Work group** (dynamic QR, auto-invite) — ch
 
 ## 🧩 Platform limits (enforced)
 
-Output obeys: no `<style>/<script>/<div>`, no `class/id`, no `position:fixed/absolute/sticky`, `float`, `@media/@keyframes`, `display:grid`, CSS variables, external fonts; all styles inlined; every text node wrapped in `<span leaf="">`. Checked deterministically by scripts, not by model discipline.
+Output obeys the official [WeChat public-platform editor plugin spec](https://developers.weixin.qq.com/doc/service/guide/product/plugin_spec.html): no `<style>/<script>/<div>`, no `class/id`, no `position:fixed/absolute/sticky`, `float`, `@media/@keyframes`, `display:grid`, CSS variables, external fonts, `!important`; all styles inlined; every text node wrapped in `<span leaf="">`; no block-level element inside `span[leaf]`; no `font-family` (always `inherit` — custom fonts render inconsistently on iOS/Android); no text inside `height:0`, no `line-height` below the font size, no fixed-px text containers, no `text-align: start/end`, no `opacity:0` images. Checked deterministically by scripts, not by model discipline.
 
 ## 🔁 Verifiable loop
 
@@ -130,7 +130,7 @@ python3 scripts/component_lint.py .            # source gate: anti-patterns in l
 python3 scripts/validate_gzh_html.py out.html  # output gate: final HTML compliance
 ```
 
-Source gate flags `white-space:pre` (blank bloat), full-border dashed frames in prose, and forbidden platform items — must be 0 ERROR. Output gate flags forbidden tags, `<span leaf>` wrapping, half-width punctuation — must be 0 ERROR / 0 half-width WARN.
+Source gate flags `white-space:pre` (blank bloat), full-border dashed frames in prose, forbidden platform items, custom `font-family`, `!important`, `<pre>` — must be 0 ERROR. Output gate flags forbidden tags, `<span leaf>` wrapping, spec CSS/structure rules, half-width punctuation — must be 0 ERROR / 0 half-width WARN.
 
 ## 💡 Why it's built this way
 
