@@ -46,6 +46,9 @@
 - [ ] `【插入…】` 类待补占位用 2c 居中板块，不是左对齐提示块
 - [ ] 骨架按所选主题库的"完整文章模板骨架"装配，不套用其它主题骨架
 - [ ] 生成后跑 scripts/validate_gzh_html.py，ERROR 与半角 WARNING 清零
+- [ ] 文章有图片时跑 scripts/inline_images.py 产出 `_内嵌.html`：本地图与外链图变 base64，`mmbiz.qpic.cn` 保留原链接（失败项已提示并保留原 src）
+- [ ] 本地图片能解析：`images/x.png` 不在 HTML 目录时，靠多根查找或 `--source-dir` 命中；同名多份会提示写全路径
+- [ ] 内嵌版总体积 ≤ 8MB；预览页用内嵌版包装
 - [ ] 产物无自定义 `font-family`（一律 `inherit`）、无 `!important`、span[leaf] 内无块级元素
 - [ ] 文字/卡片背景用纯色；确有装饰渐变的，确认其上无文字（官方规范 #4.1.3）
 
